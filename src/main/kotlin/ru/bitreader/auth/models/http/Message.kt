@@ -1,4 +1,4 @@
-package ru.bitreader.auth.models
+package ru.bitreader.auth.models.http
 
 import lombok.AllArgsConstructor
 import lombok.NoArgsConstructor
@@ -8,6 +8,6 @@ import lombok.ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-data class AuthResponse (
-    var token: String? = null
+data class Message (
+    var content: String? = null
 )

@@ -38,3 +38,4 @@ application.properties
 
 #keys
 *.pem
+/scheme.sql

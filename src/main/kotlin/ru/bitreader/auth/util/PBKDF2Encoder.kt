@@ -23,7 +23,6 @@ class PBKDF2Encoder {
 	private lateinit var keylength: String
 
 	/**
-	 * More info (https://www.owasp.org/index.php/Hashing_Java) 404 :(
 	 * @param cs password
 	 * @return encoded password
 	 */
