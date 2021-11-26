@@ -40,7 +40,7 @@ class RefreshTokenRepository: PanacheRepository<ExpiredRefreshTokenModel> {
     @Transactional
     fun disable(token: String): Boolean {
         val tokenId = accessTokenId(token, fromRefreshToken = true) ?: return false
-        persist(ExpiredRefreshTokenModel().also { it.tokenId = tokenId })
+        persist(ExpiredRefreshTokenModel().also { it.tokenId = tokenId; it.addAt = Date() })
         return true
     }
 
