@@ -44,7 +44,7 @@ class UserResourceFetcher {
         val foundedUser = repository.findByUserId(user.userId!!)
         return if (foundedUser != null ) {
             if (!repository.isValidPassword(user.password, foundedUser.password))
-                throw SignInError("Authorisation Error")
+                throw SignInError("Authorization Error")
             val token = tokenRepository.create(foundedUser)
             SignInResponse(token)
         } else throw SignInError("User not found")

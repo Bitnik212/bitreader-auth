@@ -12,6 +12,10 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.util.*
 
 
@@ -105,8 +109,8 @@ object TokenUtils {
 	}
 
 	fun currentTimeInSecs(): Long {
-		val currentTimeMS = System.currentTimeMillis()
-		return (currentTimeMS / 1000)
+		TimeZone.setDefault(TimeZone.getTimeZone("MSK"));
+		return  Date().toInstant().atZone(ZoneId.systemDefault()).toEpochSecond()*1000
 	}
 
 	fun decodeTokenPayload(token: String): JSONObject {

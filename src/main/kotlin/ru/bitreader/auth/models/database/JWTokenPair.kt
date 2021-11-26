@@ -1,11 +1,10 @@
 package ru.bitreader.auth.models.database
 
-import java.util.*
 
-class JWToken {
+class JWTokenPair {
     var access: String = ""
-    var accessExpiration: Date? = null
+    var accessExpiration: Long? = null
     var refresh: String = ""
-    var refreshExpiration: Date? = null
+    var refreshExpiration: Long? = null
     var user: UserModel? = null
 }

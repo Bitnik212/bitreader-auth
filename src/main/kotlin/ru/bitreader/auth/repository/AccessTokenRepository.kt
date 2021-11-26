@@ -14,7 +14,7 @@ class AccessTokenRepository {
     }
     private val tokenUtil = TokenUtils
 
-    @ConfigProperty(name = "ru.bitreader.auth.jwt.access.duration")
+    @ConfigProperty(name = CONFIG_KEY_ACCESS_DURATION)
     private lateinit var tokenDuration: String
 
     @ConfigProperty(name = CONFIG_KEY_VERIFY_ISSUER)
@@ -30,10 +30,10 @@ class AccessTokenRepository {
         )
     }
 
-    val expirationDate: Date
+    val expirationDate: Long
     get() {
-        val date = tokenUtil.currentTimeInSecs()+tokenDuration.toLong()
-        return Date(date)
+        val tokenDuration = tokenDuration.toLong() * 1000
+        return  tokenUtil.currentTimeInSecs()+tokenDuration
     }
 
 }
