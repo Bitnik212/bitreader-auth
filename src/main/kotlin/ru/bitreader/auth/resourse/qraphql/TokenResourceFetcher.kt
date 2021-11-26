@@ -6,9 +6,8 @@ import org.eclipse.microprofile.graphql.Mutation
 import org.eclipse.microprofile.graphql.Query
 import ru.bitreader.auth.error.RefreshTokenError
 import ru.bitreader.auth.error.RenewJWTokenError
-import ru.bitreader.auth.models.database.JWToken
+import ru.bitreader.auth.models.database.JWTokenPair
 import ru.bitreader.auth.repository.TokenRepository
-import java.security.PublicKey
 import javax.inject.Inject
 import javax.validation.ConstraintViolationException
 import javax.validation.Valid
@@ -23,7 +22,7 @@ class TokenResourceFetcher {
     @Throws(RenewJWTokenError::class, ConstraintViolationException::class, RefreshTokenError::class)
     @Description("Получить новый токены access и refresh")
     @Mutation
-    fun renew(@Valid @NotBlank refreshToken: String): JWToken {
+    fun renew(@Valid @NotBlank refreshToken: String): JWTokenPair {
         return tokenRepository.renew(refreshToken) ?: throw RenewJWTokenError()
     }
 

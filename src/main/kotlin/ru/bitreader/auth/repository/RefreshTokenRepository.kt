@@ -3,7 +3,6 @@ package ru.bitreader.auth.repository
 import io.quarkus.hibernate.orm.panache.PanacheRepository
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import ru.bitreader.auth.models.database.ExpiredRefreshTokenModel
-import ru.bitreader.auth.models.database.JWToken
 import ru.bitreader.auth.models.database.UserModel
 import ru.bitreader.auth.util.TokenUtils
 import java.util.*
@@ -55,10 +54,10 @@ class RefreshTokenRepository: PanacheRepository<ExpiredRefreshTokenModel> {
         }
     }
 
-    val expirationDate: Date
+    val expirationDate: Long
         get() {
-            val date = tokenUtil.currentTimeInSecs()+refreshTokenDuration.toLong()
-            return Date(date)
+            val tokenDuration = refreshTokenDuration.toLong() * 1000
+            return  tokenUtil.currentTimeInSecs()+tokenDuration
         }
 
     private fun accessTokenId(accessToken: String, fromRefreshToken: Boolean = false): String? {
