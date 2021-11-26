@@ -1,0 +1,75 @@
+variables:
+  port: "8080"
+  image_name: "quarkus/authbitreader_dev-jvm:$CI_COMMIT_SHORT_SHA"
+  container_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA"
+  image_artifact_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA.tar"
+
+stages:
+  - build
+  - package
+  - prepare
+  - deploy
+
+build-job:
+  only:
+    - deploy/dev
+  image: openjdk:latest
+  artifacts:
+      paths:
+        - build/quarkus-app
+  stage: build
+  before_script:
+    - chmod +x ./gradlew 
+    - cp $application_properties src/main/resources/
+    - rm src/main/resources/application.properties
+    - mv src/main/resources/application_properties src/main/resources/application.properties
+    - cp $public_key src/main/resources/ && mv src/main/resources/public_key src/main/resources/publickey.pem
+    - cp $private_key src/main/resources/ && mv src/main/resources/private_key src/main/resources/privatekey.pem
+  script:
+    - ./gradlew build
+
+
+package-job:
+  tags:
+    - docker
+  only:
+    - deploy/dev
+  artifacts:
+      paths:
+        - $image_artifact_name
+  stage: package
+  script:
+    - docker build -f src/main/docker/Dockerfile.jvm -t $image_name . 
+    - docker image save $image_name -o $image_artifact_name
+
+
+transfer-package-job:     
+  stage: prepare 
+  only:
+    - deploy/dev
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - mkdir -p ~/.ssh && touch ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
+    - cat $ssh_config >> ~/.ssh/config
+  script:
+    - scp $image_artifact_name deployServer:$path_to_image
+
+
+deploy-job:
+  stage: deploy
+  only:
+    - deploy/dev
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - mkdir -p ~/.ssh && touch ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
+    - cat $ssh_config >> ~/.ssh/config
+  script:
+    - ssh deployServer "bash /home/deploy/check_port.sh $port"
+    - ssh deployServer "docker image load -i $path_to_image$image_artifact_name"
+    - ssh deployServer "docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_name"
