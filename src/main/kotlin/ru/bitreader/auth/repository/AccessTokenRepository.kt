@@ -25,7 +25,7 @@ class AccessTokenRepository {
             accessTokenId=null,
             userId =user.id!!,
             role = user.role,
-            duration=tokenDuration.toLong(),
+            duration=tokenDuration.toLong()*1000,
             issuer=issuer
         )
     }

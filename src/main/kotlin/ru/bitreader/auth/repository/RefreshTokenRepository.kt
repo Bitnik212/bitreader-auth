@@ -32,7 +32,7 @@ class RefreshTokenRepository: PanacheRepository<ExpiredRefreshTokenModel> {
             accessTokenId=accessTokenId,
             userId =user.id!!,
             role = user.role,
-            duration =refreshTokenDuration.toLong(),
+            duration =refreshTokenDuration.toLong()*1000,
             issuer=issuer
         )
     }
