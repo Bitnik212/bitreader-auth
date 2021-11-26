@@ -1,6 +1,6 @@
 package ru.bitreader.auth.repository
 
-import ru.bitreader.auth.models.database.JWToken
+import ru.bitreader.auth.models.database.JWTokenPair
 import ru.bitreader.auth.models.database.UserModel
 import ru.bitreader.auth.models.http.UserId
 import ru.bitreader.auth.util.TokenUtils
@@ -23,9 +23,9 @@ class TokenRepository {
     private val tokenUtil = TokenUtils
     val publicKey = tokenUtil.getPublicKeyByString()
 
-    fun create(user: UserModel): JWToken {
+    fun create(user: UserModel): JWTokenPair {
         val accessToken = accessTokenRepository.create(user)
-        val token = JWToken()
+        val token = JWTokenPair()
             .also {
                 it.refresh = refreshTokenRepository.create(user, accessToken)
                 it.access = accessToken
@@ -36,17 +36,17 @@ class TokenRepository {
         return token.also { it.user?.password = "" }
     }
 
-    fun renew(refreshToken: String): JWToken? {
+    fun renew(refreshToken: String): JWTokenPair? {
         if (isExpired(refreshToken)) return null
         if (refreshTokenRepository.isDisabled(refreshToken) != false) return null
         val userId = findUserIdInToken(token = refreshToken)?: return null
         val user = userRepository.findByUserId(userId = UserId().also { it.id = userId.toLong() })
-        var jwToken: JWToken? = null
+        var jwTokenPair: JWTokenPair? = null
         if (tokenUtil.isValidToken(refreshToken)) {
-            user?.also { jwToken = create(it) }
+            user?.also { jwTokenPair = create(it) }
             refreshTokenRepository.disable(refreshToken)
         }
-        return jwToken
+        return jwTokenPair
     }
 
     private fun isExpired(token: String): Boolean {
