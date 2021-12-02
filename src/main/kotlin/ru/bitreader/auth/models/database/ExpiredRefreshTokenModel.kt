@@ -1,5 +1,6 @@
 package ru.bitreader.auth.models.database
 
+import java.util.*
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
@@ -11,4 +12,5 @@ class ExpiredRefreshTokenModel {
     @GeneratedValue(strategy = GenerationType.AUTO)
     val id: Long? = null
     var tokenId: String? = null
+    var addAt: Date? = null
 }
