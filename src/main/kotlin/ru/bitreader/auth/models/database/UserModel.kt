@@ -1,5 +1,6 @@
 package ru.bitreader.auth.models.database
 
+import net.bytebuddy.implementation.bind.annotation.Empty
 import javax.persistence.*
 import javax.validation.constraints.*
 
@@ -8,7 +9,6 @@ class UserModel {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     var id: Long? = null
-    @Null
     var username: String? = null
     @NotEmpty
     var password: String = ""
@@ -18,5 +18,5 @@ class UserModel {
     @NotEmpty
     @Column(unique = true)
     var email: String? = null
-    var suspend: Boolean = false
+    var suspend: Boolean? = false
 }

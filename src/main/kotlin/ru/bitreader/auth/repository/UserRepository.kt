@@ -28,10 +28,16 @@ class UserRepository: PanacheRepository<UserModel> {
 
     @Transactional
     fun create(user: UserModel): Boolean {
-        val userId = UserId().also { it.username = user.username; it.email = user.email?: "" }
+        val userId = UserId().also {
+            it.username = user.username;
+            it.email = user.email?: ""
+        }
         return if (findByUserId(userId) == null) try {
             user.password = passwordUtil.encrypt(user.password)
-            persist(user)
+            persist(user.also {
+                if (it.username.isNullOrBlank())
+                    it.username = it.email?.split("@")?.get(0)
+            })
             true
         } catch (e: Exception) {
             println(e)
