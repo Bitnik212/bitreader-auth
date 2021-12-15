@@ -2,8 +2,12 @@ package ru.bitreader.auth.repository
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository
 import ru.bitreader.auth.models.database.UserModel
+import ru.bitreader.auth.models.database.merge
+import ru.bitreader.auth.models.database.toUserId
 import ru.bitreader.auth.models.http.UserId
+import ru.bitreader.auth.models.http.toUserModel
 import ru.bitreader.auth.util.PasswordUtil
+import ru.bitreader.auth.util.TokenUtils
 import javax.enterprise.context.ApplicationScoped
 import javax.inject.Inject
 import javax.transaction.Transactional
@@ -13,26 +17,27 @@ class UserRepository: PanacheRepository<UserModel> {
     @Inject
     private lateinit var passwordUtil: PasswordUtil
 
+    private val tokenUtils = TokenUtils
+
     fun findByUserId(userId: UserId): UserModel? {
         return when (userId.id) {
             null -> when (userId.email) {
-                "" -> when (userId.username) {
-                    null -> null
-                    else -> find("username", userId.username).firstResult<UserModel>()
-                }
+                "" -> null
                 else -> find("email", userId.email).firstResult<UserModel>()
             }
             else -> find("id", userId.id).firstResult<UserModel>()
         }
     }
 
+    fun findByAccessToken(accessToken: String): UserModel? {
+        return if (tokenUtils.isValidToken(accessToken)) {
+            findById(tokenUtils.getUserId(accessToken))
+        } else null
+    }
+
     @Transactional
     fun create(user: UserModel): Boolean {
-        val userId = UserId().also {
-            it.username = user.username;
-            it.email = user.email?: ""
-        }
-        return if (findByUserId(userId) == null) try {
+        return if (findByUserId(user.toUserId()) == null) try {
             user.password = passwordUtil.encrypt(user.password)
             persist(user.also {
                 if (it.username.isNullOrBlank())
@@ -46,16 +51,26 @@ class UserRepository: PanacheRepository<UserModel> {
     }
 
     @Transactional
-    fun delete(id: UserId) {
+    fun delete(id: UserId): Boolean {
         val user = findByUserId(id)
-        delete(user)
+        user?.also { delete(user) }?: return false
+        return true
+    }
+
+    @Transactional
+    fun update(user: UserModel): UserModel? {
+        var foundedUser = findById(user.id)
+        println("${foundedUser?.email} == ${user.email}")
+        foundedUser = foundedUser!!.merge(user, passwordUtils = passwordUtil)
+        this.entityManager.merge(foundedUser)
+        return foundedUser
     }
 
     @Transactional
     fun suspend(id: UserId): Boolean {
         val user = findByUserId(id)
         return if (user != null) {
-            update("suspend")
+            entityManager.merge(user.also { it.suspend = !user.suspend!! })
             true
         } else false
     }

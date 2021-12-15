@@ -1,20 +1,20 @@
 package ru.bitreader.auth.resourse.qraphql
 
-import org.eclipse.microprofile.graphql.Description
-import org.eclipse.microprofile.graphql.GraphQLApi
-import org.eclipse.microprofile.graphql.Mutation
-import org.eclipse.microprofile.graphql.Query
-import ru.bitreader.auth.error.SignInError
-import ru.bitreader.auth.error.SignUpError
+import org.eclipse.microprofile.graphql.*
+import ru.bitreader.auth.error.*
 import ru.bitreader.auth.models.database.UserModel
+import ru.bitreader.auth.models.database.toUserId
+import ru.bitreader.auth.models.http.UserId
 import ru.bitreader.auth.models.http.request.AuthRequest
 import ru.bitreader.auth.models.http.response.SignInResponse
 import ru.bitreader.auth.repository.TokenRepository
 import ru.bitreader.auth.repository.UserRepository
 import javax.annotation.security.PermitAll
+import javax.annotation.security.RolesAllowed
 import javax.inject.Inject
 import javax.validation.ConstraintViolationException
 import javax.validation.Valid
+import javax.validation.constraints.NotBlank
 import kotlin.jvm.Throws
 
 @GraphQLApi
@@ -48,6 +48,19 @@ class UserResourceFetcher {
             val token = tokenRepository.create(foundedUser)
             SignInResponse(token)
         } else throw SignInError("User not found")
+    }
+
+    @Throws(UpdateUserError::class, ValidTokenError::class, ConstraintViolationException::class, TokenOwnershipError::class)
+    @RolesAllowed("USER")
+    @Mutation("updateUser")
+    @Description("Изменить поля пользователя. Обязательно указывать id пользователя, чтобы найти пользователя")
+    fun update(@Valid user: UserModel, @Valid @NotBlank accessToken: String): UserModel {
+        if (!tokenRepository.isValidAndNotExpiredToken(accessToken))
+            throw ValidTokenError("Токен не валидный или истек")
+        if (tokenRepository.tokenOwnedByUserId(accessToken, user.toUserId())) {
+            return repository.update(user)?: throw UpdateUserError()
+        }
+        else throw TokenOwnershipError()
     }
 
 }
