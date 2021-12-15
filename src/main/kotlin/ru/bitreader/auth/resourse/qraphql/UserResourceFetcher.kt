@@ -5,7 +5,7 @@ import ru.bitreader.auth.error.*
 import ru.bitreader.auth.models.database.UserModel
 import ru.bitreader.auth.models.database.toUserId
 import ru.bitreader.auth.models.http.UserId
-import ru.bitreader.auth.models.http.request.AuthRequest
+import ru.bitreader.auth.models.http.request.SignInRequest
 import ru.bitreader.auth.models.http.response.SignInResponse
 import ru.bitreader.auth.repository.TokenRepository
 import ru.bitreader.auth.repository.UserRepository
@@ -29,9 +29,10 @@ class UserResourceFetcher {
     @PermitAll
     @Throws(SignUpError::class, ConstraintViolationException::class)
     @Mutation
-    fun signUp(@Valid user: UserModel): UserModel {
-        return if (repository.create(user)) user.also { it.password = "" }
-            else {
+    fun signUp(@Valid user: UserModel): SignInResponse {
+        return if (repository.create(user)) {
+            SignInResponse(tokenRepository.create(user.also { it.password = "" }))
+        } else {
                 throw SignUpError("Такой пользователь уже есть")
             }
     }
@@ -40,7 +41,7 @@ class UserResourceFetcher {
     @PermitAll
     @Query("signIn")
     @Description("Авторизация пользователя")
-    fun signIn(@Valid user: AuthRequest): SignInResponse {
+    fun signIn(@Valid user: SignInRequest): SignInResponse {
         val foundedUser = repository.findByUserId(user.userId!!)
         return if (foundedUser != null ) {
             if (!repository.isValidPassword(user.password, foundedUser.password))
@@ -61,6 +62,18 @@ class UserResourceFetcher {
             return repository.update(user)?: throw UpdateUserError()
         }
         else throw TokenOwnershipError()
+    }
+
+    @Throws(ValidTokenError::class, ConstraintViolationException::class)
+    @RolesAllowed("USER")
+    @Mutation("deleteUser")
+    @Description("Удаления пользователя")
+    fun delete(@Valid @NotBlank accessToken: String): Boolean {
+        if (!tokenRepository.isValidAndNotExpiredToken(accessToken))
+            throw ValidTokenError("Токен не валидный или истек")
+        return repository.delete(id = UserId().also {
+            it.id = tokenRepository.tokenUtil.getUserId(accessToken)
+        })
     }
 
 }
