@@ -29,7 +29,7 @@ build-job:
     - ./gradlew build
 
 
-package-job:
+create-docker-image-job:
   tags:
     - docker
   only:
@@ -39,11 +39,13 @@ package-job:
         - $image_artifact_name
   stage: package
   script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build -f src/main/docker/Dockerfile.jvm -t $image_name . 
+    - docker push $image_name
     - docker image save $image_name -o $image_artifact_name
 
 
-transfer-package-job:     
+transfer-docker-image-job:     
   stage: prepare 
   only:
     - deploy/dev
