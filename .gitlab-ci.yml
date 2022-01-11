@@ -1,6 +1,7 @@
 variables:
   port: "8080"
-  image_name: $CI_REGISTRY"quarkus/authbitreader_dev-jvm:$CI_COMMIT_SHORT_SHA"
+  image_name: "quarkus/authbitreader_dev-jvm:$CI_COMMIT_SHORT_SHA"
+  image_tag: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
   container_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA"
   image_artifact_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA.tar"
 
@@ -39,11 +40,11 @@ create-docker-image-job:
         - $image_artifact_name
   stage: package
   script:
-    - echo $image_name
+    - echo $image_tag
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -f src/main/docker/Dockerfile.jvm -t $image_name . 
-    - docker push $image_name
-    - docker image save $image_name -o $image_artifact_name
+    - docker build -f src/main/docker/Dockerfile.jvm -t $image_tag . 
+    - docker push $image_tag
+    - docker image save $image_tag -o $image_artifact_name
 
 
 transfer-docker-image-job:     
