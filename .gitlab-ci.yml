@@ -1,6 +1,6 @@
 variables:
   port: "8080"
-  image_tag: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  image_tag: $CI_REGISTRY_IMAGE/dev:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   container_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA"
   image_artifact_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA.tar"
 
