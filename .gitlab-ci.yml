@@ -1,12 +1,11 @@
 variables:
   port: "8080"
-  image_tag: $CI_REGISTRY_IMAGE/dev:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   container_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA"
-  image_artifact_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA.tar"
+  image_tag: $CI_REGISTRY_IMAGE/dev:$container_name
+  image_tag_latest: $CI_REGISTRY_IMAGE/dev:latest
 
 stages:
   - build
-  - package
   - prepare
   - deploy
 
@@ -34,45 +33,27 @@ create-docker-image-job:
     - docker
   only:
     - deploy/dev
-  # artifacts:
-  #     paths:
-  #       - $image_artifact_name
-  stage: package
+  stage: prepare
   script:
     - echo $image_tag
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -f src/main/docker/Dockerfile.jvm -t $image_tag . 
-    - docker push $image_tag
-    # - docker image save $image_tag -o $image_artifact_name
+    - docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY
+    - docker build -f src/main/docker/Dockerfile.jvm -t $image_tag -t $image_tag_latest . 
+    - docker push $image_tag && docker push $image_tag_latest
 
 
-# transfer-docker-image-job:     
-#   stage: prepare 
-#   only:
-#     - deploy/dev
-#   before_script:
-#     - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
-#     - mkdir -p ~/.ssh && touch ~/.ssh/config
-#     - eval $(ssh-agent -s)
-#     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-#     - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
-#     - cat $ssh_config >> ~/.ssh/config
-#   script:
-#     - scp $image_artifact_name deployServer:$path_to_image
-
-
-# deploy-job:
-#   stage: deploy
-#   only:
-#     - deploy/dev
-#   before_script:
-#     - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
-#     - mkdir -p ~/.ssh && touch ~/.ssh/config
-#     - eval $(ssh-agent -s)
-#     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-#     - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
-#     - cat $ssh_config >> ~/.ssh/config
-#   script:
-#     - ssh deployServer "bash /home/deploy/check_port.sh $port"
-#     - ssh deployServer "docker image load -i $path_to_image$image_artifact_name"
-#     - ssh deployServer "docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag"
+deploy-job:
+  stage: deploy
+  only:
+    - deploy/dev
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - mkdir -p ~/.ssh && touch ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
+    - cat $ssh_config >> ~/.ssh/config
+  script:
+    - ssh deployServer "bash /home/deploy/check_port.sh $port"
+    - ssh deployServer "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY"
+    - ssh deployServer "docker pull $image_tag_latest"
+    - ssh deployServer "docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
