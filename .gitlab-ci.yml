@@ -1,0 +1,59 @@
+variables:
+  port: "8080"
+  container_name: "authbitreader_dev_$CI_COMMIT_SHORT_SHA"
+  image_tag: $CI_REGISTRY_IMAGE/dev:$container_name
+  image_tag_latest: $CI_REGISTRY_IMAGE/dev:latest
+
+stages:
+  - build
+  - prepare
+  - deploy
+
+build-job:
+  only:
+    - deploy/dev
+  image: openjdk:latest
+  artifacts:
+      paths:
+        - build/quarkus-app
+  stage: build
+  before_script:
+    - chmod +x ./gradlew 
+    - cp $application_properties src/main/resources/
+    - rm src/main/resources/application.properties
+    - mv src/main/resources/application_properties src/main/resources/application.properties
+    - cp $public_key src/main/resources/ && mv src/main/resources/public_key src/main/resources/publickey.pem
+    - cp $private_key src/main/resources/ && mv src/main/resources/private_key src/main/resources/privatekey.pem
+  script:
+    - ./gradlew build
+
+
+create-docker-image-job:
+  tags:
+    - docker
+  only:
+    - deploy/dev
+  stage: prepare
+  script:
+    - echo $image_tag
+    - docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY
+    - docker build -f src/main/docker/Dockerfile.jvm -t $image_tag -t $image_tag_latest . 
+    - docker push $image_tag && docker push $image_tag_latest
+
+
+deploy-job:
+  stage: deploy
+  only:
+    - deploy/dev
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - mkdir -p ~/.ssh && touch ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
+    - cat $ssh_config >> ~/.ssh/config
+  script:
+    - ssh deployServer "bash /home/deploy/check_port.sh $port"
+    - ssh deployServer "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY"
+    - ssh deployServer "docker pull $image_tag_latest"
+    - ssh deployServer "docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
