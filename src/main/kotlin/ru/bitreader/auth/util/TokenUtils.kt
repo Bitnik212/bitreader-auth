@@ -41,6 +41,7 @@ object TokenUtils {
 		val currentTimeInSecs = currentTimeInSecs()
 		claimsBuilder.issuer(issuer)
 		claimsBuilder.subject(userId.toString())
+		claimsBuilder.groups(role.toString())
 		claimsBuilder.issuedAt(currentTimeInSecs)
 		claimsBuilder.expiresAt(currentTimeInSecs + duration)
 		claimsBuilder.claim("role", role)
@@ -56,6 +57,8 @@ object TokenUtils {
 			false
 		}
 	}
+
+
 
 	private fun readPublicKey(): PublicKey {
 		getResourceAsStream(publicKeyLocation).use { contentIS ->
@@ -117,5 +120,9 @@ object TokenUtils {
 		val rawtokenpayload = token.split(".")[1].replace(".", "")
 		val tokenpayload = Base64.getDecoder().decode(rawtokenpayload)
 		return JSONParser().parse(String(tokenpayload)) as JSONObject
+	}
+
+	fun getUserId(token: String): Long {
+		return decodeTokenPayload(token)["sub"].toString().toLong()
 	}
 }

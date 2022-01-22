@@ -1,5 +1,6 @@
 package ru.bitreader.auth.repository
 
+import io.jsonwebtoken.MalformedJwtException
 import ru.bitreader.auth.models.database.JWTokenPair
 import ru.bitreader.auth.models.database.UserModel
 import ru.bitreader.auth.models.http.UserId
@@ -20,7 +21,7 @@ class TokenRepository {
     @Inject
     private lateinit var accessTokenRepository: AccessTokenRepository
 
-    private val tokenUtil = TokenUtils
+    val tokenUtil = TokenUtils
     val publicKey = tokenUtil.getPublicKeyByString()
 
     fun create(user: UserModel): JWTokenPair {
@@ -49,13 +50,27 @@ class TokenRepository {
         return jwTokenPair
     }
 
+    fun tokenOwnedByUserId(accessToken: String, userId: UserId): Boolean {
+        val foundedUser = userRepository.findByUserId(userId)
+        val result = foundedUser == userRepository.findByAccessToken(accessToken)
+        return if (foundedUser == null) false
+        else result
+    }
+
     private fun isExpired(token: String): Boolean {
         val parsed = tokenUtil.decodeTokenPayload(token)
         val nowDate: Long = tokenUtil.currentTimeInSecs()
         val dateLong = parsed["exp"]?: return false
         val tokenDate = Date(dateLong.toString().toLong()).toInstant().toEpochMilli()
-        println("$tokenDate < $nowDate")
         return tokenDate < nowDate
+    }
+
+    fun isValidAndNotExpiredToken(token: String): Boolean {
+        return try {
+            tokenUtil.isValidToken(token) && !isExpired(token)
+        } catch (e: MalformedJwtException) {
+            false
+        }
     }
 
     private fun findUserIdInToken(token: String): Int? {

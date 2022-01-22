@@ -10,7 +10,7 @@ import javax.validation.constraints.NotEmpty
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-class AuthRequest {
+class SignInRequest {
     var userId: UserId? = null
     @NotEmpty
     var password: String = ""
