@@ -36,7 +36,7 @@ nb-configuration.xml
 .env
 src/main/resources/application.properties
 /src/main/resources/application.properties
-
+*.properties
 #keys
 *.pem
 /scheme.sql
