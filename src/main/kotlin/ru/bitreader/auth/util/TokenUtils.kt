@@ -24,6 +24,7 @@ object TokenUtils {
 	private val publicKey: PublicKey = readPublicKey()
 	private const val privateKeyLocation = "/privatekey.pem"
 	private val privateKey = readPrivateKey()
+	const val ACCESS_TOKEN_ID = "accessTokenId"
 
 	/**
 	 * Generate token
@@ -45,8 +46,8 @@ object TokenUtils {
 		claimsBuilder.issuedAt(currentTimeInSecs)
 		claimsBuilder.expiresAt(currentTimeInSecs + duration)
 		claimsBuilder.claim("role", role)
-		if (accessTokenId != null) claimsBuilder.claim("accessTokenId", accessTokenId)
-		return claimsBuilder.jws().keyId(privateKeyLocation).sign(privateKey)
+		if (accessTokenId != null) claimsBuilder.claim(ACCESS_TOKEN_ID, accessTokenId)
+		return claimsBuilder.jws().sign(privateKey)
 	}
 
 	fun isValidToken(token: String): Boolean {
