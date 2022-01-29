@@ -1,6 +1,7 @@
 package ru.bitreader.auth.repository
 
 import io.jsonwebtoken.MalformedJwtException
+import ru.bitreader.auth.error.RenewJWTokenError
 import ru.bitreader.auth.models.database.JWTokenPair
 import ru.bitreader.auth.models.database.UserModel
 import ru.bitreader.auth.models.http.UserId
@@ -8,6 +9,7 @@ import ru.bitreader.auth.util.TokenUtils
 import java.util.*
 import javax.enterprise.context.ApplicationScoped
 import javax.inject.Inject
+import kotlin.jvm.Throws
 
 @ApplicationScoped
 class TokenRepository {
@@ -37,10 +39,13 @@ class TokenRepository {
         return token.also { it.user?.password = "" }
     }
 
-    fun renew(refreshToken: String): JWTokenPair? {
-        if (isExpired(refreshToken)) return null
-        if (refreshTokenRepository.isDisabled(refreshToken) != false) return null
-        val userId = findUserIdInToken(token = refreshToken)?: return null
+    @Throws(RenewJWTokenError::class)
+    fun renew(accessToken: String, refreshToken: String): JWTokenPair? {
+        if (isExpired(refreshToken)) throw RenewJWTokenError("Refresh токен истек")
+        if (refreshTokenRepository.isDisabled(refreshToken) != false) throw RenewJWTokenError("Refresh токен уже использован")
+        if (!accessTokenOwnedByRefreshToken(accessToken, refreshToken))
+            throw RenewJWTokenError("Access токен не принадлежит Refresh токену")
+        val userId = findUserIdInToken(token = refreshToken)?: throw RenewJWTokenError("Пользователь Refresh токена не найден")
         val user = userRepository.findByUserId(userId = UserId().also { it.id = userId.toLong() })
         var jwTokenPair: JWTokenPair? = null
         if (tokenUtil.isValidToken(refreshToken)) {
@@ -48,6 +53,14 @@ class TokenRepository {
             refreshTokenRepository.disable(refreshToken)
         }
         return jwTokenPair
+    }
+
+    fun accessTokenOwnedByRefreshToken(accessToken: String, refreshToken: String): Boolean {
+        val accessTokenPayload = tokenUtil.decodeTokenPayload(accessToken)
+        val refreshTokenPayload = tokenUtil.decodeTokenPayload(refreshToken)
+        return if (refreshTokenPayload.containsKey(tokenUtil.ACCESS_TOKEN_ID)) {
+            return refreshTokenPayload[tokenUtil.ACCESS_TOKEN_ID] == accessTokenPayload["jti"]
+        } else false
     }
 
     fun tokenOwnedByUserId(accessToken: String, userId: UserId): Boolean {
