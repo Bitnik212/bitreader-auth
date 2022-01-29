@@ -1,36 +1,52 @@
 package ru.bitreader.auth.resourse.qraphql
 
-import org.eclipse.microprofile.graphql.*
+import org.eclipse.microprofile.graphql.Description
+import org.eclipse.microprofile.graphql.GraphQLApi
+import org.eclipse.microprofile.graphql.Mutation
+import org.eclipse.microprofile.graphql.Query
+import ru.bitreader.auth.convertor.toUserId
 import ru.bitreader.auth.error.*
+import ru.bitreader.auth.models.database.Role
 import ru.bitreader.auth.models.database.UserModel
-import ru.bitreader.auth.models.database.toUserId
 import ru.bitreader.auth.models.http.UserId
-import ru.bitreader.auth.models.http.request.SignInRequest
 import ru.bitreader.auth.models.http.response.SignInResponse
+import ru.bitreader.auth.repository.EmailRepository
 import ru.bitreader.auth.repository.TokenRepository
 import ru.bitreader.auth.repository.UserRepository
+import ru.bitreader.auth.util.GraphQLRequestHelper
 import javax.annotation.security.PermitAll
 import javax.annotation.security.RolesAllowed
 import javax.inject.Inject
 import javax.validation.ConstraintViolationException
 import javax.validation.Valid
-import javax.validation.constraints.NotBlank
-import kotlin.jvm.Throws
 
 @GraphQLApi
-class UserResourceFetcher {
-    @Inject
-    lateinit var tokenRepository: TokenRepository
+class UserResourceFetcher: GraphQLRequestHelper() {
+
+    companion object {
+        const val USER_ROLE = "USER"
+        const val ADMIN_ROLE = "ADMIN"
+        const val SUFFIX = "User"
+    }
 
     @Inject
-    private lateinit var repository: UserRepository
+    private lateinit var tokenRepository: TokenRepository
+
+    @Inject
+    private lateinit var userRepository: UserRepository
+
+    @Inject
+    private lateinit var emailRepository: EmailRepository
 
     @Description("Регистрация пользователя")
     @PermitAll
-    @Throws(SignUpError::class, ConstraintViolationException::class)
+    @Throws(SignUpError::class, ValidationExceptionHandleError::class)
     @Mutation
     fun signUp(@Valid user: UserModel): SignInResponse {
-        return if (repository.create(user)) {
+        if (user.password.isEmpty())
+            throw ValidationExceptionHandleError(ConstraintViolationException("Пароль не должен быть пустым", null))
+        return if (userRepository.create(user)) {
+            emailRepository.sendWelcome(user)
             SignInResponse(tokenRepository.create(user.also { it.password = "" }))
         } else {
                 throw SignUpError("Такой пользователь уже есть")
@@ -39,40 +55,40 @@ class UserResourceFetcher {
 
     @Throws(SignInError::class, ConstraintViolationException::class)
     @PermitAll
-    @Query("signIn")
+    @Query
     @Description("Авторизация пользователя")
-    fun signIn(@Valid user: SignInRequest): SignInResponse {
-        val foundedUser = repository.findByUserId(user.userId!!)
+    fun signIn(@Valid user: UserModel): SignInResponse {
+        val foundedUser = userRepository.findByUserId(user.toUserId())
         return if (foundedUser != null ) {
-            if (!repository.isValidPassword(user.password, foundedUser.password))
-                throw SignInError("Authorization Error")
+            if (!userRepository.isValidPassword(user.password, foundedUser.password))
+                throw SignInError()
             val token = tokenRepository.create(foundedUser)
             SignInResponse(token)
-        } else throw SignInError("User not found")
+        } else throw SignInError("Пользователь не найден")
     }
 
     @Throws(UpdateUserError::class, ValidTokenError::class, ConstraintViolationException::class, TokenOwnershipError::class)
-    @RolesAllowed("USER")
-    @Mutation("updateUser")
+    @RolesAllowed(USER_ROLE, ADMIN_ROLE)
+    @Mutation("update$SUFFIX")
     @Description("Изменить поля пользователя. Обязательно указывать id пользователя, чтобы найти пользователя")
-    fun update(@Valid user: UserModel, @Valid @NotBlank accessToken: String): UserModel {
-        if (!tokenRepository.isValidAndNotExpiredToken(accessToken))
-            throw ValidTokenError("Токен не валидный или истек")
-        if (tokenRepository.tokenOwnedByUserId(accessToken, user.toUserId())) {
-            return repository.update(user)?: throw UpdateUserError()
+    fun update(@Valid user: UserModel): UserModel {
+        val token = validToken()
+        if (tokenRepository.tokenOwnedByUserId(token, user.toUserId())) {
+            if (!userRepository.isNotExistEmail(user.email!!)) throw UpdateUserError("Данная почта уже занята")
+            return userRepository.update(
+                user=user,
+                role=Role.valueOf(tokenRepository.tokenUtil.decodeTokenPayload(token)["role"].toString()))?: throw UpdateUserError()
         }
         else throw TokenOwnershipError()
     }
 
     @Throws(ValidTokenError::class, ConstraintViolationException::class)
-    @RolesAllowed("USER")
-    @Mutation("deleteUser")
+    @RolesAllowed(USER_ROLE, ADMIN_ROLE)
+    @Mutation("delete$SUFFIX")
     @Description("Удаления пользователя")
-    fun delete(@Valid @NotBlank accessToken: String): Boolean {
-        if (!tokenRepository.isValidAndNotExpiredToken(accessToken))
-            throw ValidTokenError("Токен не валидный или истек")
-        return repository.delete(id = UserId().also {
-            it.id = tokenRepository.tokenUtil.getUserId(accessToken)
+    fun delete(): Boolean {
+        return userRepository.delete(id = UserId().also {
+            it.id = tokenRepository.tokenUtil.getUserId(validToken())
         })
     }
 
