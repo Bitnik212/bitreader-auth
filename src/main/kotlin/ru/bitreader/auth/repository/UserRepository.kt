@@ -1,6 +1,7 @@
 package ru.bitreader.auth.repository
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository
+import ru.bitreader.auth.convertor.merge
 import ru.bitreader.auth.convertor.toUserId
 import ru.bitreader.auth.models.database.Role
 import ru.bitreader.auth.models.database.UserModel
@@ -60,13 +61,10 @@ class UserRepository: PanacheRepository<UserModel> {
      * Не кидать не существующего пользоваетля!!!!
      * **/
     @Transactional
-    fun update(user: UserModel, role: Role? = null): UserModel {
-        val protectedUser = user.also {
-            if (it.password.isNotEmpty()) it.password = passwordUtil.encrypt(it.password)
-            it.role = role?: it.role
-        }
-        entityManager.merge(protectedUser)
-        return protectedUser
+    fun update(user: UserModel, role: Role? = null): UserModel? {
+        var foundUser = findByUserId(user.toUserId())?: return null
+        foundUser = user.merge(originalUser = foundUser, passwordUtils = passwordUtil, changeRole = false)
+        return entityManager.merge(foundUser)
     }
 
     fun isNotExistEmail(email: String): Boolean {
