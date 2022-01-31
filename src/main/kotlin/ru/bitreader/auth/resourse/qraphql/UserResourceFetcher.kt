@@ -38,7 +38,7 @@ class UserResourceFetcher: GraphQLRequestHelper() {
     @Inject
     private lateinit var emailRepository: EmailRepository
 
-    @Description("Регистрация пользователя")
+    @Description("Регистрация пользователя. Обязательные поля: email, password")
     @PermitAll
     @Throws(SignUpError::class, ValidationExceptionHandleError::class)
     @Mutation
@@ -56,7 +56,7 @@ class UserResourceFetcher: GraphQLRequestHelper() {
     @Throws(SignInError::class, ConstraintViolationException::class)
     @PermitAll
     @Query
-    @Description("Авторизация пользователя")
+    @Description("Авторизация пользователя. Обязательные поля: email, password")
     fun signIn(@Valid user: UserModel): SignInResponse {
         val foundedUser = userRepository.findByUserId(user.toUserId())
         return if (foundedUser != null ) {
@@ -70,14 +70,14 @@ class UserResourceFetcher: GraphQLRequestHelper() {
     @Throws(UpdateUserError::class, ValidTokenError::class, ConstraintViolationException::class, TokenOwnershipError::class)
     @RolesAllowed(USER_ROLE, ADMIN_ROLE)
     @Mutation("update$SUFFIX")
-    @Description("Изменить поля пользователя. Обязательно указывать id пользователя, чтобы найти пользователя")
+    @Description("Изменить поля пользователя. Обязательные поля: id. Нельзя изменить роль.")
     fun update(@Valid user: UserModel): UserModel {
         val token = validToken()
         if (tokenRepository.tokenOwnedByUserId(token, user.toUserId())) {
-            if (!userRepository.isNotExistEmail(user.email!!)) throw UpdateUserError("Данная почта уже занята")
             return userRepository.update(
                 user=user,
-                role=Role.valueOf(tokenRepository.tokenUtil.decodeTokenPayload(token)["role"].toString()))?: throw UpdateUserError()
+                role=Role.valueOf(tokenRepository.tokenUtil.decodeTokenPayload(token)["role"].toString()))
+                .also { it?.password = "" }?: throw UpdateUserError()
         }
         else throw TokenOwnershipError()
     }
