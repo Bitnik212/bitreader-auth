@@ -7,15 +7,13 @@ import io.smallrye.jwt.build.Jwt
 import org.jose4j.json.internal.json_simple.JSONObject
 import org.jose4j.json.internal.json_simple.parser.JSONParser
 import ru.bitreader.auth.models.database.Role
+import ru.bitreader.auth.models.database.UserModel
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.util.*
 
 
@@ -32,7 +30,7 @@ object TokenUtils {
 	 * **/
 	@Throws(Exception::class)
 	fun generateToken(
-		userId: Long,
+		user: UserModel,
 		role: Role,
 		duration: Long,
 		issuer: String,
@@ -41,7 +39,8 @@ object TokenUtils {
 		val claimsBuilder = Jwt.claims()
 		val currentTimeInSecs = currentTimeInSecs()
 		claimsBuilder.issuer(issuer)
-		claimsBuilder.subject(userId.toString())
+		claimsBuilder.subject(user.id.toString())
+		claimsBuilder.claim("username", user.username.toString())
 		claimsBuilder.groups(role.toString())
 		claimsBuilder.issuedAt(currentTimeInSecs)
 		claimsBuilder.expiresAt(currentTimeInSecs + duration)

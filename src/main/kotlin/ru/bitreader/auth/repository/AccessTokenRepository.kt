@@ -23,8 +23,8 @@ class AccessTokenRepository {
     fun create(user: UserModel): String {
         return tokenUtil.generateToken(
             accessTokenId=null,
-            userId =user.id!!,
-            role = user.role,
+            user=user,
+            role=user.role,
             duration=tokenDuration.toLong()*1000,
             issuer=issuer
         )
