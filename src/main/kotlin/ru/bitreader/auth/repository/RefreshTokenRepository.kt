@@ -30,7 +30,7 @@ class RefreshTokenRepository: PanacheRepository<ExpiredRefreshTokenModel> {
         val accessTokenId = accessTokenId(accessToken)!!
         return tokenUtil.generateToken(
             accessTokenId=accessTokenId,
-            userId =user.id!!,
+            user=user,
             role = user.role,
             duration =refreshTokenDuration.toLong()*1000,
             issuer=issuer
