@@ -58,7 +58,7 @@ class UserResourceFetcher: GraphQLRequestHelper() {
     @Query
     @Description("Авторизация пользователя. Обязательные поля: email, password")
     fun signIn(@Valid user: UserModel): SignInResponse {
-        val foundedUser = userRepository.findByUserId(user.toUserId())
+        val foundedUser = userRepository.findByUserId(user.also { it.id = null }.toUserId())
         return if (foundedUser != null ) {
             if (!userRepository.isValidPassword(user.password, foundedUser.password))
                 throw SignInError()
