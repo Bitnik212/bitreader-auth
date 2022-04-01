@@ -50,10 +50,8 @@ deploy-job:
     - mkdir -p ~/.ssh && touch ~/.ssh/config
     - eval $(ssh-agent -s)
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-    - echo "$ssh_private_key" | tr -d '\r' | ssh-add -
-    - cat $ssh_config >> ~/.ssh/config
+    - echo "$deploy_server_ssh_private_key" | tr -d '\r' | ssh-add -
+    - cat $deploy_server_ssh_config >> ~/.ssh/config
   script:
-    - ssh deployServer "bash /home/deploy/check_port.sh $port"
-    - ssh deployServer "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY"
-    - ssh deployServer "docker pull $image_tag_latest"
-    - ssh deployServer "docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
+    - ssh deploy -o StrictHostKeyChecking=no "curl $check_port_script_link > check_port.sh && chmod +x check_port.sh && bash check_port.sh $port"
+    - ssh deploy -o StrictHostKeyChecking=no "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY && docker pull $image_tag_latest && docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
