@@ -19,6 +19,7 @@ import javax.annotation.security.RolesAllowed
 import javax.inject.Inject
 import javax.validation.ConstraintViolationException
 import javax.validation.Valid
+import javax.validation.constraints.Email
 
 @GraphQLApi
 class UserResourceFetcher: GraphQLRequestHelper() {
@@ -91,5 +92,20 @@ class UserResourceFetcher: GraphQLRequestHelper() {
             it.id = tokenRepository.tokenUtil.getUserId(validToken())
         })
     }
+
+    @Throws(ValidTokenError::class, ConstraintViolationException::class)
+    @Mutation("restore$SUFFIX")
+    @Description("Восстановить пользователя")
+    fun restore(@Email email: String): Boolean {
+        return try {
+            emailRepository.restore(email)
+            true
+        } catch (e: Exception) {
+            println(e.message)
+            false
+        }
+    }
+
+
 
 }
