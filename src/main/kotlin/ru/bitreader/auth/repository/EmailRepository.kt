@@ -17,4 +17,9 @@ class EmailRepository {
         mailer.send(mail)
     }
 
+    fun restore(email: String) {
+        val mail = Mail.withHtml(email, "Восстановление аккаунта", "Следуйте инструкции ниже. (В разработке)")
+        mailer.send(mail)
+    }
+
 }
