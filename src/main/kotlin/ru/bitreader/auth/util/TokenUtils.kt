@@ -41,6 +41,7 @@ object TokenUtils {
 		claimsBuilder.issuer(issuer)
 		claimsBuilder.claim("username", user.username.toString())
 		claimsBuilder.claim("id", user.id)
+		claimsBuilder.subject(user.id.toString())
 		claimsBuilder.groups(role.toString())
 		claimsBuilder.issuedAt(currentTimeInSecs)
 		claimsBuilder.expiresAt(currentTimeInSecs + duration)
