@@ -45,13 +45,5 @@ deploy-job:
   stage: deploy
   only:
     - deploy/dev
-  before_script:
-    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
-    - mkdir -p ~/.ssh && touch ~/.ssh/config
-    - eval $(ssh-agent -s)
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-    - echo "$deploy_server_ssh_private_key" | tr -d '\r' | ssh-add -
-    - cat $deploy_server_ssh_config >> ~/.ssh/config
   script:
-    - ssh deploy -o StrictHostKeyChecking=no "curl $check_port_script_link > check_port.sh && chmod +x check_port.sh && bash check_port.sh $port"
-    - ssh deploy -o StrictHostKeyChecking=no "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY && docker pull $image_tag_latest && docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
+    - curl --location --request POST "$portainer_callback_link" --header "Authorization:\ Bearer $portainer_access_token"
