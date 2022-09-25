@@ -54,4 +54,4 @@ deploy-job:
     - cat $deploy_server_ssh_config >> ~/.ssh/config
   script:
     - ssh deploy -o StrictHostKeyChecking=no "curl $check_port_script_link > check_port.sh && chmod +x check_port.sh && bash check_port.sh $port"
-    - ssh deploy -o StrictHostKeyChecking=no "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY && docker pull $image_tag_latest && docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --network=nginx --name $container_name $image_tag_latest"
+    - ssh deploy -o StrictHostKeyChecking=no "docker login -u $CI_REGISTRY_USER -p $personal_access_token $CI_REGISTRY && docker pull $image_tag_latest && docker run -d -p $port:$port -e QUARKUS_LAUNCH_DEVMODE=true --restart=always --name $container_name $image_tag_latest"
