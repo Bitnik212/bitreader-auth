@@ -51,5 +51,7 @@ COPY --chown=1001 build/quarkus-app/quarkus/ /deployments/quarkus/
 EXPOSE 8080
 USER 1001
 
+RUN chmod +x /deployments/run-java.sh
+
 ENTRYPOINT ["sh", "/deployments/run-java.sh" ]
 
